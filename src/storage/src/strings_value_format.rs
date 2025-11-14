@@ -16,7 +16,6 @@
 // limitations under the License.
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use rocksdb::CompactionDecision;
 use snafu::ensure;
 
 use crate::base_value_format::{DataType, InternalValue, ParsedInternalValue};
@@ -35,13 +34,18 @@ pub struct StringValue {
 }
 
 delegate_internal_value!(StringValue);
-#[allow(dead_code)]
 impl StringValue {
     pub fn new<T>(user_value: T) -> Self
-    where T: Into<Bytes> {
+    where
+        T: Into<Bytes>,
+    {
         Self {
             inner: InternalValue::new(DataType::String, user_value),
         }
+    }
+
+    pub fn user_value_len(&self) -> usize {
+        self.inner.user_value.len()
     }
 
     pub fn encode(&self) -> BytesMut {
@@ -67,10 +71,11 @@ pub struct ParsedStringsValue {
 }
 
 delegate_parsed_value!(ParsedStringsValue);
-#[allow(dead_code)]
 impl ParsedStringsValue {
     pub fn new<T>(internal_value: T) -> Result<Self>
-    where T: Into<BytesMut> {
+    where
+        T: Into<BytesMut>,
+    {
         let value: BytesMut = internal_value.into();
         ensure!(
             value.len() >= STRING_VALUE_SUFFIXLENGTH,
@@ -122,6 +127,7 @@ impl ParsedStringsValue {
         })
     }
 
+    #[allow(dead_code)]
     pub fn strip_suffix(&mut self) {
         self.inner.value.advance(TYPE_LENGTH);
 
@@ -131,16 +137,19 @@ impl ParsedStringsValue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_ctime(&mut self, ctime: u64) {
         self.inner.ctime = ctime;
         self.set_ctime_to_value();
     }
 
+    #[allow(dead_code)]
     pub fn set_etime(&mut self, etime: u64) {
         self.inner.etime = etime;
         self.set_etime_to_value();
     }
 
+    #[allow(dead_code)]
     fn set_ctime_to_value(&mut self) {
         let suffix_start =
             self.inner.value.len() - STRING_VALUE_SUFFIXLENGTH + SUFFIX_RESERVE_LENGTH;
@@ -150,6 +159,7 @@ impl ParsedStringsValue {
         dst.copy_from_slice(&ctime_bytes);
     }
 
+    #[allow(dead_code)]
     fn set_etime_to_value(&mut self) {
         let suffix_start = self.inner.value.len() - STRING_VALUE_SUFFIXLENGTH
             + SUFFIX_RESERVE_LENGTH
@@ -158,14 +168,6 @@ impl ParsedStringsValue {
         let bytes = self.inner.etime.to_le_bytes();
         let dst = &mut self.inner.value[suffix_start..suffix_start + TIMESTAMP_LENGTH];
         dst.copy_from_slice(&bytes);
-    }
-
-    pub fn filter_decision(&self, cur_time: u64) -> CompactionDecision {
-        if self.inner.etime != 0 && self.inner.etime < cur_time {
-            CompactionDecision::Remove
-        } else {
-            CompactionDecision::Keep
-        }
     }
 }
 

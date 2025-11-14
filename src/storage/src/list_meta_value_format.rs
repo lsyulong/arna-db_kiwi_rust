@@ -35,6 +35,10 @@ use crate::{
 const INITIAL_LEFT_INDEX: u64 = 9223372036854775807;
 const INITIAL_RIGHT_INDEX: u64 = 9223372036854775808;
 const LIST_VALUE_INDEX_LENGTH: usize = 8;
+const LISTS_META_VALUE_SUFFIX_LENGTH: usize =
+    VERSION_LENGTH + 2 * LIST_VALUE_INDEX_LENGTH + SUFFIX_RESERVE_LENGTH + 2 * TIMESTAMP_LENGTH;
+pub const LISTS_META_VALUE_LENGTH: usize =
+    TYPE_LENGTH + BASE_META_VALUE_COUNT_LENGTH + LISTS_META_VALUE_SUFFIX_LENGTH;
 
 // | type  | list_size | version | left index | right index | reserve |  cdate | timestamp |
 // |  1B   |     8B    |    8B   |     8B     |      8B     |   16B   |    8B  |     8B    |
@@ -49,7 +53,9 @@ delegate_internal_value!(ListsMetaValue);
 #[allow(dead_code)]
 impl ListsMetaValue {
     pub fn new<T>(list_size: T) -> Self
-    where T: Into<Bytes> {
+    where
+        T: Into<Bytes>,
+    {
         Self {
             inner: InternalValue::new(DataType::List, list_size),
             left_index: INITIAL_LEFT_INDEX,
@@ -82,8 +88,8 @@ impl ListsMetaValue {
         self.right_index += index;
     }
 
-    fn encode(&self) -> BytesMut {
-        // type(1) + user_value + version(8) + left_index(8) + right_index(8) + reserve(16) + ctime(8) + etime(8)
+    pub fn encode(&self) -> BytesMut {
+        // type(1) + list_size(8) + version(8) + left_index(8) + right_index(8) + reserve(16) + ctime(8) + etime(8)
         let needed = TYPE_LENGTH
             + self.inner.user_value.len()
             + VERSION_LENGTH
@@ -122,7 +128,9 @@ impl ParsedListsMetaValue {
         TYPE_LENGTH + BASE_META_VALUE_COUNT_LENGTH + Self::LISTS_META_VALUE_SUFFIX_LENGTH;
 
     pub fn new<T>(internal_value: T) -> Result<Self>
-    where T: Into<BytesMut> {
+    where
+        T: Into<BytesMut>,
+    {
         let value: BytesMut = internal_value.into();
         let value_len = value.len();
         ensure!(
@@ -175,7 +183,15 @@ impl ParsedListsMetaValue {
         self.set_right_index(INITIAL_RIGHT_INDEX);
         self.set_etime(0);
         self.set_ctime(0);
+        self.set_data_type_to_value(DataType::List);
         self.update_version()
+    }
+
+    fn set_data_type_to_value(&mut self, data_type: DataType) {
+        if !self.inner.value.is_empty() {
+            self.inner.value[0] = data_type as u8;
+            self.inner.data_type = data_type; // Also update the internal field
+        }
     }
 
     fn set_version_to_value(&mut self) {
@@ -286,6 +302,10 @@ impl ParsedListsMetaValue {
     pub fn modify_right_index(&mut self, index: u64) {
         self.right_index += index;
         self.set_index_to_value();
+    }
+
+    pub fn value(&self) -> &[u8] {
+        &self.inner.value
     }
 
     pub fn strip_suffix(&mut self) {

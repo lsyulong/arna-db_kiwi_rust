@@ -34,13 +34,13 @@ pub const ENCODED_KEY_DELIM_SIZE: usize = 2;
 
 pub const STRING_VALUE_SUFFIXLENGTH: usize = 2 * TIMESTAMP_LENGTH + SUFFIX_RESERVE_LENGTH;
 pub const BASE_META_VALUE_COUNT_LENGTH: usize = 8;
-/// type(1B) + len(4B) + version(8B) + reserve(16B) + cdata(8B) + timestamp(8B)
+/// type(1B) + len(8B) + version(8B) + reserve(16B) + cdata(8B) + timestamp(8B)
 pub const BASE_META_VALUE_LENGTH: usize = TYPE_LENGTH
     + BASE_META_VALUE_COUNT_LENGTH
     + VERSION_LENGTH
     + SUFFIX_RESERVE_LENGTH
     + 2 * TIMESTAMP_LENGTH;
-
+    
 use bytes::{BufMut, BytesMut};
 use snafu::ensure;
 
@@ -107,9 +107,12 @@ pub fn decode_user_key(encoded_key_part: &[u8], user_key: &mut BytesMut) -> Resu
         }
     }
 
-    ensure!(delim_found, InvalidFormatSnafu {
-        message: "Encoded key delimiter not found or key ends unexpectedly".to_string()
-    });
+    ensure!(
+        delim_found,
+        InvalidFormatSnafu {
+            message: "Encoded key delimiter not found or key ends unexpectedly".to_string()
+        }
+    );
 
     Ok(())
 }

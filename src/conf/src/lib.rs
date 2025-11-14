@@ -27,7 +27,7 @@ mod tests {
 
     #[test]
     fn test_config_parsing() {
-        let config = config::Config::load("./config.ini");
+        let config = config::Config::load("./kiwi.conf");
         assert!(
             config.is_ok(),
             "Config loading failed: {:?}",
@@ -36,7 +36,7 @@ mod tests {
 
         let config = config.unwrap();
 
-        assert_eq!(1430, config.port);
+        assert_eq!(7379, config.port);
         assert_eq!(10 * 1024 * 1024, config.memory);
 
         assert_eq!(2, config.rocksdb_max_subcompactions);
@@ -97,6 +97,7 @@ mod tests {
             db_instance_num: 3,
             small_compaction_threshold: 5000,
             small_compaction_duration_threshold: 10000,
+            cluster: config::ClusterConfig::default(),
         };
         assert!(invalid_config.validate().is_err());
 

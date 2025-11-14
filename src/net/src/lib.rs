@@ -15,7 +15,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod async_resp_parser;
+pub mod buffer;
+pub mod executor_ext;
 pub mod handle;
+pub mod network_execution;
+pub mod network_handle;
+pub mod network_server;
+pub mod optimized_handler;
+pub mod pipeline;
+pub mod pool;
+pub mod raft_network_handle;
+pub mod storage_client;
 pub mod tcp;
 
 // TODO: delete this module
@@ -23,10 +34,16 @@ pub mod error;
 pub mod unix;
 
 use std::error::Error;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::tcp::TcpServer;
+use crate::network_server::NetworkServer;
+use crate::storage_client::StorageClient;
+use crate::tcp::{ClusterTcpServer, TcpServer};
+use cmd::table::create_command_table;
+use executor::CmdExecutorBuilder;
+use runtime::{MessageChannel, RuntimeManager, StorageClient as RuntimeStorageClient};
 
 #[async_trait]
 pub trait ServerTrait: Send + Sync + 'static {
@@ -36,13 +53,106 @@ pub trait ServerTrait: Send + Sync + 'static {
 pub struct ServerFactory;
 
 impl ServerFactory {
-    pub fn create_server(protocol: &str, addr: Option<String>) -> Option<Box<dyn ServerTrait>> {
+    /// Create a server with dual runtime architecture support
+    ///
+    /// Defaults to single-node mode. Use `create_server_with_mode` for cluster mode.
+    pub fn create_server(
+        protocol: &str,
+        addr: Option<String>,
+        runtime_manager: &RuntimeManager,
+    ) -> Option<Box<dyn ServerTrait>> {
+        Self::create_server_with_mode(
+            protocol,
+            addr,
+            runtime_manager,
+            crate::raft_network_handle::ClusterMode::Single,
+        )
+    }
+
+    /// Create a server with dual runtime architecture and specified cluster mode
+    ///
+    /// # Requirements
+    /// - Requirement 6.1: Network layer SHALL support mode switching
+    pub fn create_server_with_mode(
+        protocol: &str,
+        addr: Option<String>,
+        runtime_manager: &RuntimeManager,
+        cluster_mode: crate::raft_network_handle::ClusterMode,
+    ) -> Option<Box<dyn ServerTrait>> {
         match protocol.to_lowercase().as_str() {
-            "tcp" => Some(Box::new(TcpServer::new(addr))),
+            "tcp" => {
+                // Create NetworkServer with dual runtime architecture
+                match Self::create_network_server_with_mode(addr, runtime_manager, cluster_mode) {
+                    Ok(server) => Some(Box::new(server) as Box<dyn ServerTrait>),
+                    Err(e) => {
+                        log::error!("Failed to create NetworkServer: {}", e);
+                        None
+                    }
+                }
+            }
             #[cfg(unix)]
             "unix" => Some(Box::new(unix::UnixServer::new(addr))),
             #[cfg(not(unix))]
             "unix" => None,
+            _ => None,
+        }
+    }
+
+    /// Create a legacy server without dual runtime architecture (for backward compatibility)
+    pub fn create_legacy_server(
+        protocol: &str,
+        addr: Option<String>,
+    ) -> Option<Box<dyn ServerTrait>> {
+        match protocol.to_lowercase().as_str() {
+            "tcp" => TcpServer::new(addr)
+                .ok()
+                .map(|s| Box::new(s) as Box<dyn ServerTrait>),
+            #[cfg(unix)]
+            "unix" => Some(Box::new(unix::UnixServer::new(addr))),
+            #[cfg(not(unix))]
+            "unix" => None,
+            _ => None,
+        }
+    }
+
+    /// Create a NetworkServer with dual runtime architecture and specified cluster mode
+    fn create_network_server_with_mode(
+        addr: Option<String>,
+        runtime_manager: &RuntimeManager,
+        cluster_mode: crate::raft_network_handle::ClusterMode,
+    ) -> Result<NetworkServer, Box<dyn std::error::Error>> {
+        // Create message channel for communication between runtimes
+        let message_channel = Arc::new(MessageChannel::new(
+            runtime_manager.config().channel_buffer_size,
+        ));
+
+        // Create storage client for network-to-storage communication
+        let runtime_storage_client = Arc::new(RuntimeStorageClient::new(
+            message_channel.clone(),
+            runtime_manager.config().request_timeout,
+        ));
+        let storage_client = Arc::new(StorageClient::new(runtime_storage_client));
+
+        // Create command table and executor
+        let cmd_table = Arc::new(create_command_table());
+        let executor = Arc::new(CmdExecutorBuilder::new().build());
+
+        // Create NetworkServer with cluster mode
+        let mut server = NetworkServer::new(addr, storage_client, cmd_table, executor)?;
+        server.set_cluster_mode(cluster_mode);
+        
+        Ok(server)
+    }
+
+    pub fn create_cluster_server(
+        protocol: &str,
+        addr: Option<String>,
+        raft_node: Arc<dyn Send + Sync>,
+    ) -> Option<Box<dyn ServerTrait>> {
+        match protocol.to_lowercase().as_str() {
+            "tcp" => ClusterTcpServer::new(addr, raft_node)
+                .ok()
+                .map(|s| Box::new(s) as Box<dyn ServerTrait>),
             _ => None,
         }
     }

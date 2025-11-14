@@ -6,13 +6,20 @@ readme.workspace = true
 repository.workspace = true
 edition.workspace = true
 
+[[bin]]
+name = "kiwi"
+path = "src/main.rs"
+
 [dependencies]
 net.workspace = true
+runtime.workspace = true
+storage.workspace = true
 tokio.workspace = true
 env_logger.workspace = true
 log.workspace = true
 conf.workspace = true
 clap = { version = "4.0", features = ["derive"] }
+raft.workspace = true
 
 [lints]
 workspace = true

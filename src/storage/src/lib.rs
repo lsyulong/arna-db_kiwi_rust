@@ -18,18 +18,21 @@
 mod base_data_value_format;
 mod member_data_key_format;
 
-mod base_filter;
+mod data_compaction_filter;
+mod meta_compaction_filter;
+
 mod base_key_format;
-mod base_meta_value_format;
-mod base_value_format;
+pub mod base_meta_value_format;
+pub mod base_value_format;
 mod custom_comparator;
 
-mod strings_value_format;
+pub mod strings_value_format;
 
-mod list_meta_value_format;
+pub mod list_meta_value_format;
 mod lists_data_key_format;
 
 mod coding;
+mod expiration_manager;
 mod slot_indexer;
 mod statistics;
 mod util;
@@ -41,18 +44,28 @@ mod storage_murmur3;
 
 // commands
 mod redis_hashes;
+mod redis_lists;
 mod redis_sets;
 mod redis_strings;
 
+pub mod cluster_storage;
 pub mod error;
 pub mod options;
 pub mod storage;
 
+// Raft integration modules
+mod redis_for_raft;
+pub mod raft_integration;
+
+pub use redis_for_raft::RedisForRaft;
+
 pub use base_key_format::BaseMetaKey;
 pub use base_value_format::*;
+pub use cluster_storage::ClusterStorage;
 pub use error::Result;
+pub use expiration_manager::ExpirationManager;
 pub use options::StorageOptions;
 pub use redis::{ColumnFamilyIndex, Redis};
 pub use statistics::KeyStatistics;
 pub use storage::{BgTask, BgTaskHandler};
-pub use util::unique_test_db_path;
+pub use util::{safe_cleanup_test_db, unique_test_db_path};

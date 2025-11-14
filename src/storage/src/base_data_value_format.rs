@@ -29,7 +29,6 @@ use crate::{
 // | value | reserve | ctime |
 // |       |   16B   |   8B  |
 
-/// TODO: remove allow dead code
 #[allow(dead_code)]
 pub struct BaseDataValue {
     inner: InternalValue,
@@ -39,7 +38,9 @@ delegate_internal_value!(BaseDataValue);
 #[allow(dead_code)]
 impl BaseDataValue {
     pub fn new<T>(user_value: T) -> Self
-    where T: Into<Bytes> {
+    where
+        T: Into<Bytes>,
+    {
         Self {
             inner: InternalValue::new(DataType::None, user_value),
         }
@@ -67,13 +68,14 @@ pub struct ParsedBaseDataValue {
     inner: ParsedInternalValue,
 }
 
-/// TODO: remove allow dead code
 #[allow(dead_code)]
 impl ParsedBaseDataValue {
     const BASEDATAVALUESUFFIXLENGTH: usize = SUFFIX_RESERVE_LENGTH + TIMESTAMP_LENGTH;
 
     pub fn new<T>(internal_value: T) -> Result<Self>
-    where T: Into<BytesMut> {
+    where
+        T: Into<BytesMut>,
+    {
         let value: BytesMut = internal_value.into();
         ensure!(
             value.len() >= Self::BASEDATAVALUESUFFIXLENGTH,
@@ -93,13 +95,16 @@ impl ParsedBaseDataValue {
         let reserve_range = user_value_len..reserve_end;
 
         let mut time_reader = &value[reserve_end..];
-        ensure!(time_reader.len() >= TIMESTAMP_LENGTH, InvalidFormatSnafu {
-            message: format!(
-                "invalid base data value length: {} < {}",
-                time_reader.len(),
-                TIMESTAMP_LENGTH
-            )
-        });
+        ensure!(
+            time_reader.len() >= TIMESTAMP_LENGTH,
+            InvalidFormatSnafu {
+                message: format!(
+                    "invalid base data value length: {} < {}",
+                    time_reader.len(),
+                    TIMESTAMP_LENGTH
+                )
+            }
+        );
         let ctime = time_reader.get_u64_le();
 
         Ok(Self {

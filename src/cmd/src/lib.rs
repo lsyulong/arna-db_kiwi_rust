@@ -15,10 +15,78 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod admin;
+pub mod append;
+pub mod bitcount;
+pub mod bitop;
+pub mod bitpos;
+pub mod cluster;
+pub mod decr;
+pub mod decrby;
+pub mod del;
+pub mod exists;
+pub mod expire;
+pub mod expireat;
+pub mod flushall;
+pub mod flushdb;
 pub mod get;
+pub mod getbit;
+pub mod getrange;
+pub mod getset;
 pub mod group_client;
+pub mod hdel;
+pub mod hexists;
+pub mod hget;
+pub mod hgetall;
+pub mod hincrby;
+pub mod hincrbyfloat;
+pub mod hkeys;
+pub mod hlen;
+pub mod hmget;
+pub mod hmset;
+pub mod hset;
+pub mod hsetnx;
+pub mod hstrlen;
+pub mod hvals;
+pub mod incr;
+pub mod incrby;
+pub mod incrbyfloat;
+pub mod keys;
+pub mod list;
+pub mod mget;
+pub mod mset;
+pub mod msetnx;
+pub mod persist;
+pub mod pexpire;
+pub mod pexpireat;
+mod ping;
+pub mod psetex;
+pub mod pttl;
+pub mod randomkey;
+pub mod sadd;
+pub mod scard;
+pub mod sdiff;
+pub mod sdiffstore;
 pub mod set;
+pub mod setbit;
+pub mod setex;
+pub mod setnx;
+pub mod setrange;
+pub mod sinter;
+pub mod sinterstore;
+pub mod sismember;
+pub mod smembers;
+pub mod smove;
+pub mod spop;
+pub mod srandmember;
+pub mod srem;
+pub mod sscan;
+pub mod strlen;
+pub mod sunion;
+pub mod sunionstore;
 pub mod table;
+pub mod ttl;
+pub mod type_cmd;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -101,6 +169,16 @@ pub trait Cmd: Send + Sync {
 
     fn execute(&self, client: &Client, storage: Arc<Storage>) {
         debug!("execute command: {:?}", client.cmd_name());
+        if !self.check_arg(client.argv().len()) {
+            client.set_reply(RespData::Error(
+                format!(
+                    "ERR wrong number of arguments for '{}' command",
+                    String::from_utf8_lossy(client.cmd_name().as_slice()),
+                )
+                .into(),
+            ));
+            return;
+        }
         if self.do_initial(client) {
             self.do_cmd(client, storage);
         }

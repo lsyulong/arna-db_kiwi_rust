@@ -20,10 +20,12 @@ mod cursor_management_test {
     use std::sync::Arc;
 
     use storage::error::Error;
-    use storage::{DataType, StorageOptions, storage::Storage, unique_test_db_path};
+    use storage::{
+        DataType, StorageOptions, safe_cleanup_test_db, storage::Storage, unique_test_db_path,
+    };
 
-    #[test]
-    fn test_store_and_load_cursor_basic() {
+    #[tokio::test]
+    async fn test_store_and_load_cursor_basic() {
         let test_db_path = unique_test_db_path();
         let mut storage = Storage::new(1, 0);
         let options = Arc::new(StorageOptions::default());
@@ -42,13 +44,11 @@ mod cursor_management_test {
         assert_eq!(start_key, "test_key_001");
 
         drop(storage);
-        if test_db_path.exists() {
-            std::fs::remove_dir_all(test_db_path).unwrap();
-        }
+        safe_cleanup_test_db(&test_db_path);
     }
 
-    #[test]
-    fn test_load_nonexist_cursor() {
+    #[tokio::test]
+    async fn test_load_nonexist_cursor() {
         let test_db_path = unique_test_db_path();
         let mut storage = Storage::new(1, 0);
         let options = Arc::new(StorageOptions::default());
@@ -61,13 +61,11 @@ mod cursor_management_test {
         assert!(matches!(err, Error::KeyNotFound { .. }));
 
         drop(storage);
-        if test_db_path.exists() {
-            std::fs::remove_dir_all(test_db_path).unwrap();
-        }
+        safe_cleanup_test_db(&test_db_path);
     }
 
-    #[test]
-    fn test_multiple_data_types() {
+    #[tokio::test]
+    async fn test_multiple_data_types() {
         let test_db_path = unique_test_db_path();
         let mut storage = Storage::new(1, 0);
         let options = Arc::new(StorageOptions::default());
@@ -95,13 +93,11 @@ mod cursor_management_test {
         }
 
         drop(storage);
-        if test_db_path.exists() {
-            std::fs::remove_dir_all(test_db_path).unwrap();
-        }
+        safe_cleanup_test_db(&test_db_path);
     }
 
-    #[test]
-    fn test_empty_next_key_remove() {
+    #[tokio::test]
+    async fn test_empty_next_key_remove() {
         let test_db_path = unique_test_db_path();
         let mut storage = Storage::new(1, 0);
         let options = Arc::new(StorageOptions::default());
@@ -124,8 +120,6 @@ mod cursor_management_test {
         assert!(matches!(err, Error::KeyNotFound { .. }));
 
         drop(storage);
-        if test_db_path.exists() {
-            std::fs::remove_dir_all(test_db_path).unwrap();
-        }
+        safe_cleanup_test_db(&test_db_path);
     }
 }

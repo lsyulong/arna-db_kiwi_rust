@@ -5,20 +5,22 @@ members = [
 	"src/storage",
 	"src/kstd",
 	"src/common/macro",
+	"src/common/runtime",
 	"src/net",
 	"src/resp",
 	"src/server",
 	"src/conf",
 	"src/cmd",
 	"src/executor",
-	"src/client"
+	"src/client",
+	"src/raft"
 ]
 
 [workspace.package]
 version = "0.1.0"
 description = "An enhanced Redis server implemented in Rust"
 readme = "README.md"
-repository = "https://github.com/arana-db/kiwi-rs"
+repository = "https://github.com/arana-db/kiwi"
 edition = "2021"
 
 [workspace.lints.clippy]
@@ -32,7 +34,8 @@ unknown_lints = "deny"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
 
 [workspace.dependencies]
-bytes = "1"
+
+bytes = { version = "1", features = ["serde"] }
 chrono = "0.4.40"
 proc-macro2 = "1.0.66"
 quote = "1.0"
@@ -57,14 +60,18 @@ crc16 = "0.4"
 async-channel = "2.5.0"
 tokio-util = "0.7.16"
 async-trait = "0.1"
-foyer = { version = "0.18", features = ["nightly"] }
+foyer = { version = "0.17" }
 clap = { version = "4.0", features = ["derive"] }
+rand = "0.8"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+openraft = { version = "0.9.20", features = ["serde"] }
 
 ## workspaces members
 engine = { path = "src/engine" }
 storage = { path = "src/storage" }
 kstd = { path = "src/kstd" }
 common-macro = { path = "src/common/macro" }
+runtime = { path = "src/common/runtime" }
 net = { path = "src/net" }
 resp = { path = "src/resp" }
 server = { path = "src/server" }
@@ -72,6 +79,7 @@ conf = { path = "src/conf" }
 cmd = { path = "src/cmd" }
 executor = { path = "src/executor" }
 client = { path = "src/client" }
+raft = { path = "src/raft" }
 
 [profile.dev]
 split-debuginfo = "unpacked"
