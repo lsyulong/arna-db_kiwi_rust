@@ -53,7 +53,6 @@ pub use base_value_format::*;
 pub use error::Result;
 pub use options::StorageOptions;
 pub use redis::{ColumnFamilyIndex, Redis};
-pub use redis_strings::BitOpType;
 pub use statistics::KeyStatistics;
 pub use storage::{BgTask, BgTaskHandler};
 pub use util::unique_test_db_path;
