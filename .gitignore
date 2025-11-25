@@ -48,6 +48,16 @@ STORAGE_COMPARISON.md
 # Claude Code configuration
 .claude/
 
+# Claude Spec Workflow configuration
+.spec-workflow/
+
+agent-os/
+
+# Serana AI configuration
+.serena/
+
+.cargo/
+
 # Kiro
 .kiro
 CHECKLIST.md
